@@ -412,7 +412,7 @@ class Renderer:
 
 
     @ti.kernel
-    def copy(self, img: ti.ext_arr(), samples: ti.i32):
+    def copy(self, img: ti.types.ndarray(), samples: ti.i32):
         for i, j in self.color_buffer:
             u = 1.0 * i / self.image_res[0]
             v = 1.0 * j / self.image_res[1]
@@ -451,7 +451,7 @@ class Renderer:
             self.color_buffer[u, v] += contrib
 
     @ti.kernel
-    def initialize_particles_kernel(self, x: ti.ext_arr(), color: ti.ext_arr()):
+    def initialize_particles_kernel(self, x: ti.types.ndarray(), color: ti.types.ndarray()):
         self.bbox[0] = [inf, inf, inf]
         self.bbox[1] = [-inf, -inf, -inf]
         for i in range(self.num_particles[None]):

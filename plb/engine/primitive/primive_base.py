@@ -127,14 +127,14 @@ class Primitive:
         self.rotation[target] = self.rotation[source]
 
     @ti.kernel
-    def get_state_kernel(self, f: ti.i32, controller: ti.ext_arr()):
+    def get_state_kernel(self, f: ti.i32, controller: ti.types.ndarray()):
         for j in ti.static(range(3)):
             controller[j] = self.position[f][j]
         for j in ti.static(range(4)):
             controller[j+self.dim] = self.rotation[f][j]
 
     @ti.kernel
-    def set_state_kernel(self, f: ti.i32, controller: ti.ext_arr()):
+    def set_state_kernel(self, f: ti.i32, controller: ti.types.ndarray()):
         for j in ti.static(range(3)):
             self.position[f][j] = controller[j]
         for j in ti.static(range(4)):
@@ -164,19 +164,12 @@ class Primitive:
             self.action_scale[None] = cfg.action.scale
 
     @ti.kernel
-    def set_action_kernel(self, s: ti.i32, action: ti.ext_arr()):
+    def set_action_kernel(self, s: ti.i32, action: ti.types.ndarray()):
         for j in ti.static(range(self.action_dim)):
             self.action_buffer[s][j] = action[j]
 
-    @ti.complex_kernel
-    def no_grad_set_action_kernel(self, s, action):
-        self.set_action_kernel(s, action)
-    @ti.complex_kernel_grad(no_grad_set_action_kernel)
-    def no_grad_set_action_kernel_grad(self, s, action):
-        return
-
     @ti.kernel
-    def get_action_grad_kernel(self, s: ti.i32, n:ti.i32, grad: ti.ext_arr()):
+    def get_action_grad_kernel(self, s: ti.i32, n:ti.i32, grad: ti.types.ndarray()):
         for i in range(0, n):
             for j in ti.static(range(self.action_dim)):
                 grad[i, j] = self.action_buffer.grad[s+i][j]
@@ -194,7 +187,7 @@ class Primitive:
     def set_action(self, s, n_substeps, action):
         # set actions for n_substeps ...
         if self.action_dim > 0:
-            self.no_grad_set_action_kernel(s, action) #HACK: taichi can't compute gradient to this.
+            self.set_action_kernel(s, action)
             self.set_velocity(s, n_substeps)
 
     def get_action_grad(self, s, n):

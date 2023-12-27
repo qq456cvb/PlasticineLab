@@ -133,17 +133,10 @@ class MLP:
             for j in range(self.dims[i+1]):
                 self.hidden_prev[i+1][t, j] = 0.
 
-    @ti.complex_kernel
-    def clear_no_grad(self, t):
-        self.clear_kernel(t)
-    @ti.complex_kernel_grad(clear_no_grad)
-    def clear_no_grad_grad(self, t):
-        pass
-
     def set_action(self, s, n_substeps):
         # step 1, compute the results into the buffer
         # step 2, store the results
-        self.clear_no_grad(s)
+        self.clear_kernel(s)
         assert n_substeps == self.substeps
         for i in self.kernels:
             i(s)

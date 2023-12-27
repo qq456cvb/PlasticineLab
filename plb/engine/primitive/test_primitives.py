@@ -41,7 +41,7 @@ def test_cfg(cls):
         assert abs(run(gt, a) - run(sdf, a)).max() < 1e-5, f"{cls}, {a}"
 
 
-ti.init(arch=ti.gpu, fast_math=False, debug=False)
+ti.init(arch=ti.gpu, fast_math=False, debug=False, device_memory_fraction=0.9)
 from plb.engine.primitive.primitives import Torus, Sphere, Capsule, RollingPin, Cylinder, Chopsticks
 #test_cfg(Torus)
 #test_cfg(Sphere)

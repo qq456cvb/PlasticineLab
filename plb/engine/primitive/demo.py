@@ -3,9 +3,9 @@ def run(args):
     import numpy as np
     gpu, eps = args
     if gpu:
-        ti.init(arch=ti.gpu, print_ir=True, fast_math=False)
+        ti.init(arch=ti.gpu, print_ir=True, fast_math=False, device_memory_fraction=0.9)
     else:
-        ti.init(arch=ti.cpu, print_ir=True, fast_math=False)
+        ti.init(arch=ti.cpu, print_ir=True, fast_math=False, device_memory_fraction=0.9)
     a = np.array([1., 1., 1.])
     grid_pos = ti.Vector.field(3, shape=(), dtype=ti.f64)
     grid_pos.from_numpy(a)
