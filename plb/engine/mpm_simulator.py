@@ -183,6 +183,7 @@ class MPMSimulator:
                 self.grid_v_in[base + offset] += weight * (self.p_mass * self.v[f, p] + affine @ dpos)
                 self.grid_m[base + offset] += weight * self.p_mass
 
+    @ti.func
     def stencil_range(self):
         return ti.ndrange(*((3, ) * self.dim))
 
@@ -242,7 +243,7 @@ class MPMSimulator:
             self.x[f + 1, p] = ti.max(ti.min(self.x[f, p] + self.dt * self.v[f + 1, p], 1.-3*self.dx), 0.)
             # advection and preventing it from overflow
 
-    @ti.complex_kernel
+    @ti.ad.grad_replaced
     def substep(self, s):
         # centroids[None] = [0, 0] # manually clear the centroids...
         self.clear_grid()
@@ -257,7 +258,7 @@ class MPMSimulator:
         self.g2p(s)
 
 
-    @ti.complex_kernel_grad(substep)
+    @ti.ad.grad_for(substep)
     def substep_grad(self, s):
         self.clear_grid()
         self.clear_SVD_grad()  # clear the svd grid
@@ -280,7 +281,7 @@ class MPMSimulator:
 
     # ------------------------------------ io -------------------------------------#
     @ti.kernel
-    def readframe(self, f:ti.i32, x: ti.ext_arr(), v: ti.ext_arr(), F: ti.ext_arr(), C: ti.ext_arr()):
+    def readframe(self, f:ti.i32, x: ti.types.ndarray(), v: ti.types.ndarray(), F: ti.types.ndarray(), C: ti.types.ndarray()):
         for i in range(self.n_particles):
             for j in ti.static(range(self.dim)):
                 x[i, j] = self.x[f, i][j]
@@ -290,7 +291,7 @@ class MPMSimulator:
                     C[i, j, k] = self.C[f, i][j, k]
 
     @ti.kernel
-    def setframe(self, f:ti.i32, x: ti.ext_arr(), v: ti.ext_arr(), F: ti.ext_arr(), C: ti.ext_arr()):
+    def setframe(self, f:ti.i32, x: ti.types.ndarray(), v: ti.types.ndarray(), F: ti.types.ndarray(), C: ti.types.ndarray()):
         for i in range(self.n_particles):
             for j in ti.static(range(self.dim)):
                 self.x[f, i][j] = x[i, j]
@@ -328,7 +329,7 @@ class MPMSimulator:
             i.set_state(f, s)
 
     @ti.kernel
-    def reset_kernel(self, x:ti.ext_arr()):
+    def reset_kernel(self, x:ti.types.ndarray()):
         for i in range(self.n_particles):
             for j in ti.static(range(self.dim)):
                 self.x[0, i][j] = x[i, j]
@@ -341,7 +342,7 @@ class MPMSimulator:
         self.cur = 0
 
     @ti.kernel
-    def get_x_kernel(self, f: ti.i32, x: ti.ext_arr()):
+    def get_x_kernel(self, f: ti.i32, x: ti.types.ndarray()):
         for i in range(self.n_particles):
             for j in ti.static(range(self.dim)):
                 x[i, j] = self.x[f, i][j]
@@ -352,7 +353,7 @@ class MPMSimulator:
         return x
 
     @ti.kernel
-    def get_v_kernel(self, f: ti.i32, v: ti.ext_arr()):
+    def get_v_kernel(self, f: ti.i32, v: ti.types.ndarray()):
         for i in range(self.n_particles):
             for j in ti.static(range(self.dim)):
                 v[i, j] = self.v[f, i][j]
@@ -393,12 +394,12 @@ class MPMSimulator:
 
 
     """
-    @ti.complex_kernel
+    @ti.ad.grad_replaced
     def clear_and_compute_grid_m(self, f):
         self.grid_m.fill(0)
         self.compute_grid_m_kernel(f)
 
-    @ti.complex_kernel_grad(clear_and_compute_grid_m)
+    @ti.ad.grad_for(clear_and_compute_grid_m)
     def clear_and_compute_grid_m_grad(self, f):
         self.compute_grid_m_kernel.grad(f)
     """

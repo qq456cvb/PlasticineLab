@@ -254,7 +254,7 @@ class Renderer:
                     for i in ti.static(range(len(self.primitives))):
                         if sdf_id == i:
                             normal = ti.cast(self.primitives[i].normal(0, o + dist*d), ti.f32)
-                            color = self.primitives[i].color
+                            color = self.primitives[i].color[None]
                     roughness = 0.
                     material = DIFFUSE
 
@@ -412,7 +412,7 @@ class Renderer:
 
 
     @ti.kernel
-    def copy(self, img: ti.ext_arr(), samples: ti.i32):
+    def copy(self, img: ti.types.ndarray(), samples: ti.i32):
         for i, j in self.color_buffer:
             u = 1.0 * i / self.image_res[0]
             v = 1.0 * j / self.image_res[1]
@@ -427,18 +427,18 @@ class Renderer:
 
     @ti.kernel
     def render(self):
-        ti.block_dim(128)
+        ti.loop_config(block_dim=128)
         #print(self.sample_sdf(self.bbox[0] + 0.05))
         #return
-        mat = ti.Matrix(np.array([
-            [np.cos(self.camera_rot[1]), 0.0000000, np.sin(self.camera_rot[1])],
+        mat = ti.Matrix([
+            [ti.cos(self.camera_rot[1]), 0.0000000, ti.sin(self.camera_rot[1])],
             [0.0000000, 1.0000000, 0.0000000],
-            [-np.sin(self.camera_rot[1]), 0.0000000, np.cos(self.camera_rot[1])],
-        ]) @ np.array([
+            [-ti.sin(self.camera_rot[1]), 0.0000000, ti.cos(self.camera_rot[1])],
+        ]) @ ti.Matrix([
             [1.0000000, 0.0000000, 0.0000000],
-            [0.0000000, np.cos(self.camera_rot[0]), np.sin(self.camera_rot[0])],
-            [0.0000000, -np.sin(self.camera_rot[0]), np.cos(self.camera_rot[0])],
-        ]))
+            [0.0000000, ti.cos(self.camera_rot[0]), ti.sin(self.camera_rot[0])],
+            [0.0000000, -ti.sin(self.camera_rot[0]), ti.cos(self.camera_rot[0])],
+        ])
         for u, v in self.color_buffer:
             pos = self.camera_pos
             d = ti.Vector([
@@ -451,7 +451,7 @@ class Renderer:
             self.color_buffer[u, v] += contrib
 
     @ti.kernel
-    def initialize_particles_kernel(self, x: ti.ext_arr(), color: ti.ext_arr()):
+    def initialize_particles_kernel(self, x: ti.types.ndarray(), color: ti.types.ndarray()):
         self.bbox[0] = [inf, inf, inf]
         self.bbox[1] = [-inf, -inf, -inf]
         for i in range(self.num_particles[None]):

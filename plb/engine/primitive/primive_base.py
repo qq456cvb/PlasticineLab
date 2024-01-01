@@ -27,7 +27,7 @@ class Primitive:
 
         self.friction = ti.field(dtype, shape=())
         self.softness = ti.field(dtype, shape=())
-        self.color = ti.Vector.field(3, ti.f32, shape=()) # positon of the primitive
+        self.color = ti.Vector.field(3, ti.f32, shape=()) # color of the primitive
         self.position = ti.Vector.field(3, dtype, needs_grad=True) # positon of the primitive
         self.rotation = ti.Vector.field(4, dtype, needs_grad=True) # quaternion for storing rotation
 
@@ -36,7 +36,7 @@ class Primitive:
 
         ti.root.dense(ti.i, (self.max_timesteps,)).place(self.position, self.position.grad, self.rotation, self.rotation.grad,
                                                                        self.v, self.v.grad, self.w, self.w.grad)
-        self.xyz_limit = ti.Vector.field(3, ti.f64, shape=(2,)) # positon of the primitive
+        self.xyz_limit = ti.Vector.field(3, ti.f64, shape=(2,)) # xyz limit of the primitive
 
         self.action_dim = self.cfg.action.dim
 
@@ -127,14 +127,14 @@ class Primitive:
         self.rotation[target] = self.rotation[source]
 
     @ti.kernel
-    def get_state_kernel(self, f: ti.i32, controller: ti.ext_arr()):
+    def get_state_kernel(self, f: ti.i32, controller: ti.types.ndarray()):
         for j in ti.static(range(3)):
             controller[j] = self.position[f][j]
         for j in ti.static(range(4)):
             controller[j+self.dim] = self.rotation[f][j]
 
     @ti.kernel
-    def set_state_kernel(self, f: ti.i32, controller: ti.ext_arr()):
+    def set_state_kernel(self, f: ti.i32, controller: ti.types.ndarray()):
         for j in ti.static(range(3)):
             self.position[f][j] = controller[j]
         for j in ti.static(range(4)):
@@ -164,19 +164,19 @@ class Primitive:
             self.action_scale[None] = cfg.action.scale
 
     @ti.kernel
-    def set_action_kernel(self, s: ti.i32, action: ti.ext_arr()):
+    def set_action_kernel(self, s: ti.i32, action: ti.types.ndarray()):
         for j in ti.static(range(self.action_dim)):
             self.action_buffer[s][j] = action[j]
 
-    @ti.complex_kernel
+    @ti.ad.grad_replaced
     def no_grad_set_action_kernel(self, s, action):
         self.set_action_kernel(s, action)
-    @ti.complex_kernel_grad(no_grad_set_action_kernel)
+    @ti.ad.grad_for(no_grad_set_action_kernel)
     def no_grad_set_action_kernel_grad(self, s, action):
         return
 
     @ti.kernel
-    def get_action_grad_kernel(self, s: ti.i32, n:ti.i32, grad: ti.ext_arr()):
+    def get_action_grad_kernel(self, s: ti.i32, n:ti.i32, grad: ti.types.ndarray()):
         for i in range(0, n):
             for j in ti.static(range(self.action_dim)):
                 grad[i, j] = self.action_buffer.grad[s+i][j]
